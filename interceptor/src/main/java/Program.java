@@ -78,14 +78,14 @@ public class Program {
 
 
             
-            // Call TECH5 Billing service and swallow any raised exception
-            String billingServer = "http://localhost:5188/EchoService";
+            // Call Billing service and swallow any raised exception
+            String billingService = "http://localhost:5188/Billing";
             String clientId = "PAU";
             String applicationId = "LDS";
             String transactionId = UUID.randomUUID().toString();
             String transactionTime = Instant.now().toString();
 
-            String billingQueryString = "?time=" + transactionTime + "&tid=" + transactionId + "&sc=" + transactionStatusCode + "&cid=" + clientId + "&appId=" + applicationId;
+            String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + clientId + "&appId=" + applicationId + "&sc=" + transactionStatusCode;
             
             try {
             
@@ -96,7 +96,7 @@ public class Program {
 
                 HttpRequest requestHead = HttpRequest.newBuilder()
                     .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                    .uri(URI.create(billingServer + billingQueryString))
+                    .uri(URI.create(billingService + billingQueryString))
                     .build();
 
                 httpAsynClient.sendAsync(requestHead, java.net.http.HttpResponse.BodyHandlers.discarding());
