@@ -6,7 +6,7 @@
     "configurations": [
         {
             "type": "java",
-            "name": "Launch WebServer",
+            "name": "Launch Interceptor Web Server",
             "request": "launch",
             "mainClass": "Program",
             "projectName": "interceptor"
