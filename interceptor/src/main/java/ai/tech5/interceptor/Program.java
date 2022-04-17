@@ -1,5 +1,6 @@
 package ai.tech5.interceptor;
 
+import java.util.Properties;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -29,8 +30,21 @@ import org.apache.http.impl.client.HttpClientBuilder;
 
 public class Program {
 
+    private static Properties config = new Properties();
+
     public static void main(final String[] args) {
         
+        // Load configuration file
+        InputStream configFile = Program.class.getResourceAsStream("/config.properties");
+        
+        try {
+            config.load(configFile);
+        } catch (IOException e1) {
+            e1.printStackTrace();
+        }
+
+        
+        // Define an HTTP handler to process incoming requests
         HttpHandler multipartProcessorHandler = (exchange) -> {
 
             
@@ -48,14 +62,14 @@ public class Program {
             
             
             // Call LDS service using the image received
-            String url = "http://localhost:8080/check_liveness?data";
+            String ldsServiceAddress = config.getProperty("LDSServiceAddress");
                         
             HttpEntity entity = MultipartEntityBuilder
                 .create()
                 .addBinaryBody("file", fileItem.getFile().toFile(), ContentType.APPLICATION_OCTET_STREAM, fileItem.getFile().toFile().getName())
                 .build();
             
-            HttpPost httpPost = new HttpPost(url);
+            HttpPost httpPost = new HttpPost(ldsServiceAddress);
             httpPost.setEntity(entity);
 
             String transactionStatusCode = "0";
@@ -81,9 +95,9 @@ public class Program {
 
             
             // Call Billing service and swallow any raised exception
-            String billingService = "http://localhost:5188/Billing";
-            String clientId = "PAU";
-            String applicationId = "LDS";
+            String billingServiceAddress = config.getProperty("BillingServiceAddress");
+            String clientId = config.getProperty("ClientID");
+            String applicationId = config.getProperty("ApplicationID");
             String transactionId = UUID.randomUUID().toString();
             String transactionTime = Instant.now().toString();
 
@@ -92,13 +106,15 @@ public class Program {
             try {
             
             
+                int timeoutMilliseconds = Integer.parseInt(config.getProperty("BillingConnectionTimeoutInMilliseconds"));
+
                 HttpClient httpAsynClient = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofSeconds(4))
+                    .connectTimeout(Duration.ofMillis(timeoutMilliseconds))
                     .build();
 
                 HttpRequest requestHead = HttpRequest.newBuilder()
                     .method("HEAD", HttpRequest.BodyPublishers.noBody())
-                    .uri(URI.create(billingService + billingQueryString))
+                    .uri(URI.create(billingServiceAddress + billingQueryString))
                     .build();
 
                 httpAsynClient.sendAsync(requestHead, java.net.http.HttpResponse.BodyHandlers.discarding());
@@ -122,8 +138,12 @@ public class Program {
             exchange.getResponseSender().send(responseText); 
         };
         
+        
+        int httpServerPort = Integer.parseInt(config.getProperty("HTTPServerPort"));
+        String httpServerAddress = config.getProperty("HTTPServerAddress");
+        
         Undertow server = Undertow.builder()
-                .addHttpListener(9999, "127.0.0.1")
+                .addHttpListener(httpServerPort, httpServerAddress)
                 .setHandler(
                     new EagerFormParsingHandler(
                         FormParserFactory.builder()

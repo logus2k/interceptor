@@ -8,7 +8,7 @@
             "type": "java",
             "name": "Launch Interceptor Web Server",
             "request": "launch",
-            "mainClass": "Program",
+            "mainClass": "ai.tech5.interceptor.Program",
             "projectName": "interceptor"
         },
         {
