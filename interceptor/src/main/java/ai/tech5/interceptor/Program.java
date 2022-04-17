@@ -140,10 +140,10 @@ public class Program {
         
         
         int httpServerPort = Integer.parseInt(config.getProperty("HTTPServerPort"));
-        String httpServerAddress = config.getProperty("HTTPServerAddress");
+        String httpServerIP = config.getProperty("HTTPServerIP");
         
         Undertow server = Undertow.builder()
-                .addHttpListener(httpServerPort, httpServerAddress)
+                .addHttpListener(httpServerPort, httpServerIP)
                 .setHandler(
                     new EagerFormParsingHandler(
                         FormParserFactory.builder()
