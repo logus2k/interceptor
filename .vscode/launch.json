@@ -9,6 +9,7 @@
             "name": "Launch Interceptor Web Server",
             "request": "launch",
             "mainClass": "ai.tech5.interceptor.Program",
+            "args": "C:\\Labs\\Git\\interceptor\\interceptor\\src\\main\\resources\\config.properties",
             "projectName": "interceptor"
         },
         {

@@ -47,17 +47,31 @@
       <artifactId>httpmime</artifactId>
       <version>4.5.13</version>
     </dependency>
+
+    <dependency>
+      <groupId>io.github.hakky54</groupId>
+      <artifactId>sslcontext-kickstart</artifactId>
+      <version>7.4.1</version>
+    </dependency>
+
+    <dependency> 
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-jdk14</artifactId>
+      <version>1.7.36</version>
+    </dependency>
     
   </dependencies>
 
   <build>
 
+      <!--
       <resources>
         <resource>
             <directory>src/main/resources</directory>
             <filtering>true</filtering>
         </resource>
       </resources>
+      -->
     
       <plugins>
         <!-- clean lifecycle, see https://maven.apache.org/ref/current/maven-core/lifecycles.html#clean_Lifecycle -->

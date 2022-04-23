@@ -1,0 +1,1 @@
+openssl req -x509 -newkey rsa:4096 -sha256 -days 7200 -nodes -keyout tech5lds.key -out tech5lds.crt -subj "/CN=tech5lds.com" -addext "subjectAltName=DNS:tech5lds.com,DNS:www.tech5lds.com,IP:127.0.0.1"
