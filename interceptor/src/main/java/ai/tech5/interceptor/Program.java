@@ -1,10 +1,8 @@
 package ai.tech5.interceptor;
 
-import java.util.Iterator;
 import java.util.Properties;
 import java.net.URI;
 import java.net.http.HttpClient;
-import java.net.http.HttpHeaders;
 import java.net.http.HttpRequest;
 import java.nio.file.Paths;
 import java.io.InputStream;
@@ -18,9 +16,6 @@ import javax.net.ssl.SSLContext;
 
 import io.undertow.Undertow;
 import io.undertow.UndertowOptions;
-import io.undertow.client.UndertowClient;
-import io.undertow.util.Headers;
-import io.undertow.util.HttpString;
 import io.undertow.util.Methods;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.form.FormData;
@@ -31,7 +26,6 @@ import io.undertow.server.handlers.form.EagerFormParsingHandler;
 import io.undertow.server.handlers.form.FormData.FileItem;
 
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
 import org.apache.http.entity.ContentType;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
@@ -92,8 +86,9 @@ public class Program {
                 java.net.http.HttpResponse<byte[]> response = httpAsynClient.send(requestGet,
                         java.net.http.HttpResponse.BodyHandlers.ofByteArray());
                 
-                exchange.getRequestHeaders().put(Headers.CONTENT_TYPE, "text/json");
 
+                
+                exchange.getRequestHeaders().forEach(values -> exchange.getRequestHeaders().put(values.getHeaderName(), values.getFirst()));
                 exchange.getResponseSender().send(new String(response.body()));
 
 
@@ -191,7 +186,7 @@ public class Program {
                 }
 
                 // Return the answer from LDS service
-                exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "text/plain");
+                exchange.getRequestHeaders().forEach(values -> exchange.getRequestHeaders().put(values.getHeaderName(), values.getFirst()));
                 exchange.getResponseSender().send(responseText);
             }
 

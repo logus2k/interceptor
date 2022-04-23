@@ -137,4 +137,21 @@
       </plugins>
 
   </build>
+
+
+  <dependencyManagement>
+  
+
+    <dependencies>
+    
+
+      <dependency>
+        <groupId>org.jboss.logging</groupId>
+        <artifactId>jboss-logging</artifactId>
+        <version>3.4.1.Final</version>
+      </dependency>
+
+    </dependencies>
+
+  </dependencyManagement>
 </project>
