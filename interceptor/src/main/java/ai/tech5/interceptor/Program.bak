@@ -1,6 +1,5 @@
 package ai.tech5.interceptor;
 
-import java.util.List;
 import java.util.Properties;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -12,13 +11,11 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
-import java.util.function.BiConsumer;
 
 import javax.net.ssl.SSLContext;
 
 import io.undertow.Undertow;
 import io.undertow.UndertowOptions;
-import io.undertow.util.HttpString;
 import io.undertow.util.Methods;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.handlers.form.FormData;
@@ -63,15 +60,6 @@ public class Program {
         HttpHandler multipartProcessorHandler = (exchange) -> {
 
 
-            class MyBiConsumer implements BiConsumer<String, List<String>> {
-
-                public void accept(String headerName, List<String> headerValues)
-                {
-                    exchange.getResponseHeaders().put(HttpString.tryFromString(headerName), headerValues.get(0));
-                }
-            }
-
-
             String ldsServiceAddress = config.getProperty("LDSServiceAddress");
 
             
@@ -95,12 +83,12 @@ public class Program {
                     .uri(URI.create(ldsServiceAddress + exchange.getRequestURI() + ldsQueryString))
                     .build();
 
+                java.net.http.HttpResponse<byte[]> response = httpAsynClient.send(requestGet,
+                        java.net.http.HttpResponse.BodyHandlers.ofByteArray());
+                
 
-                java.net.http.HttpResponse<byte[]> response = httpAsynClient.send(requestGet, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
-
-                exchange.getResponseHeaders().clear();
-                BiConsumer<String, List<String>> action = new MyBiConsumer();
-                response.headers().map().forEach(action);
+                
+                exchange.getRequestHeaders().forEach(values -> exchange.getRequestHeaders().put(values.getHeaderName(), values.getFirst()));
                 exchange.getResponseSender().send(new String(response.body()));
 
 
@@ -109,6 +97,7 @@ public class Program {
             else if (exchange.getRequestMethod() == Methods.POST)
             {
 
+                String responseText = "";
 
                 // Receive the multipart form-data request and extracts the attached image
                 FormData attachment = exchange.getAttachment(FormDataParser.FORM_DATA);
@@ -142,7 +131,6 @@ public class Program {
 
                 CloseableHttpClient closeableHttpClient = HttpClientBuilder.create().build();
 
-
                 try {
 
                     org.apache.http.HttpResponse response = closeableHttpClient.execute(httpPost);
@@ -152,14 +140,7 @@ public class Program {
                     InputStream stream = result.getContent();
                     byte[] bytes = stream.readAllBytes();
 
-                    exchange.getResponseHeaders().clear();
-
-                    for (org.apache.http.Header header : response.getAllHeaders()) {
-                        exchange.getResponseHeaders().put(new HttpString(header.getName()), header.getValue());
-                    }
-
-                    exchange.getResponseSender().send(new String(bytes));              
-
+                    responseText = new String(bytes);
 
                 } catch (IOException e) {
                     e.printStackTrace();
@@ -191,13 +172,25 @@ public class Program {
                         .build();
 
                     httpAsynClient.sendAsync(requestHead, java.net.http.HttpResponse.BodyHandlers.discarding());
+                    /*
+                        .whenCompleteAsync((t, u) -> {
+                            System.out.println(t.headers().toString());
+                            System.out.println("httpResponse statusCode = ${t.statusCode()}");
+                        })
+                        .join();
+                    */
 
 
                 } catch (Exception e) {
                     System.out.println(e.getMessage());
                 }
 
+                // Return the answer from LDS service
+                exchange.getRequestHeaders().forEach(values -> exchange.getRequestHeaders().put(values.getHeaderName(), values.getFirst()));
+                exchange.getResponseSender().send(responseText);
             }
+
+
  
         };
         
@@ -227,5 +220,7 @@ public class Program {
                 ).build();
         server.start();
     }
+
+
 
 }
