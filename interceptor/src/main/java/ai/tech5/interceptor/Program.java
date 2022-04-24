@@ -120,8 +120,9 @@ public class Program {
                 Deque<FormValue> formValueQueue = attachment.get("Data");
 
                 MultipartEntityBuilder multiPartEntityBuilder = MultipartEntityBuilder.create();
+                int numberOfAttachments = formValueQueue.size();
 
-                for (int x = 0; x < formValueQueue.size() + 1; x++) {
+                for (int x = 0; x < numberOfAttachments + 1; x++) {
                     FormValue formValueItem = formValueQueue.pop();
                     multiPartEntityBuilder.addBinaryBody(formValueItem.getFileName(), formValueItem.getFileItem().getInputStream().readAllBytes(), ContentType.APPLICATION_OCTET_STREAM, formValueItem.getFileName());
                 }
@@ -138,7 +139,7 @@ public class Program {
                 HttpPost httpPost = new HttpPost(ldsServiceAddress + exchange.getRelativePath() + ldsQueryString);
                 httpPost.setEntity(entity);
 
-                String transactionStatusCode = "0";
+                String responseStatusCode = "0";
 
                 CloseableHttpClient closeableHttpClient = HttpClientBuilder.create().build();
 
@@ -148,7 +149,7 @@ public class Program {
 
                     response = closeableHttpClient.execute(httpPost);
                     HttpEntity result = response.getEntity();
-                    transactionStatusCode = Integer.toString(response.getStatusLine().getStatusCode());
+                    responseStatusCode = Integer.toString(response.getStatusLine().getStatusCode());
 
                     InputStream stream = result.getContent();
                     byte[] bytes = stream.readAllBytes();
@@ -176,8 +177,9 @@ public class Program {
                 String applicationId = config.getProperty("ApplicationID");
                 String transactionId = UUID.randomUUID().toString();
                 String transactionTime = Instant.now().toString();
+                String numberOfTransactions = String.valueOf(numberOfAttachments);
 
-                String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + clientId + "&appId=" + applicationId + "&sc=" + transactionStatusCode;
+                String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + clientId + "&appId=" + applicationId + "&sc=" + responseStatusCode + "&nt=" + numberOfTransactions;
                 
                 try {
                 
