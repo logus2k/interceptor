@@ -1,5 +1,6 @@
 package ai.tech5.interceptor;
 
+import java.util.Deque;
 import java.util.List;
 import java.util.Properties;
 import java.net.URI;
@@ -13,7 +14,6 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.function.BiConsumer;
-
 import javax.net.ssl.SSLContext;
 
 import io.undertow.Undertow;
@@ -25,13 +25,14 @@ import io.undertow.server.handlers.form.FormData;
 import io.undertow.server.handlers.form.FormDataParser;
 import io.undertow.server.handlers.form.FormParserFactory;
 import io.undertow.server.handlers.form.MultiPartParserDefinition;
+import io.undertow.server.handlers.form.FormData.FormValue;
 import io.undertow.server.handlers.form.EagerFormParsingHandler;
-import io.undertow.server.handlers.form.FormData.FileItem;
 
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
-import org.apache.http.entity.ContentType;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.xnio.Options;
@@ -99,8 +100,9 @@ public class Program {
                 java.net.http.HttpResponse<byte[]> response = httpAsynClient.send(requestGet, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
 
                 exchange.getResponseHeaders().clear();
-                BiConsumer<String, List<String>> action = new MyBiConsumer();
-                response.headers().map().forEach(action);
+                // BiConsumer<String, List<String>> action = new MyBiConsumer();
+                // response.headers().map().forEach(action);
+                response.headers().map().forEach(new MyBiConsumer());
                 exchange.getResponseSender().send(new String(response.body()));
 
 
@@ -109,19 +111,22 @@ public class Program {
             else if (exchange.getRequestMethod() == Methods.POST)
             {
 
+                
+                String responseText = "";
 
-                // Receive the multipart form-data request and extracts the attached image
+                // Receive the multipart form-data request and extract the attached image(s)
                 FormData attachment = exchange.getAttachment(FormDataParser.FORM_DATA);
-                FormData.FormValue formValue = attachment.get("Data").getFirst();
-                
-                FileItem fileItem = null;
-                
-                if (formValue.isFileItem()) {
-                    fileItem = formValue.getFileItem();
-                } 
 
-                
-                
+                Deque<FormValue> formValueQueue = attachment.get("Data");
+
+                MultipartEntityBuilder multiPartEntityBuilder = MultipartEntityBuilder.create();
+
+                for (int x = 0; x < formValueQueue.size() + 1; x++) {
+                    FormValue formValueItem = formValueQueue.pop();
+                    multiPartEntityBuilder.addBinaryBody(formValueItem.getFileName(), formValueItem.getFileItem().getInputStream().readAllBytes(), ContentType.APPLICATION_OCTET_STREAM, formValueItem.getFileName());
+                }
+
+                HttpEntity entity = multiPartEntityBuilder.build();
 
                 String ldsQueryString = exchange.getQueryString();
 
@@ -130,11 +135,6 @@ public class Program {
                 }
                 
                 // Call LDS service using the image received
-                HttpEntity entity = MultipartEntityBuilder
-                    .create()
-                    .addBinaryBody("file", fileItem.getFile().toFile(), ContentType.APPLICATION_OCTET_STREAM, fileItem.getFile().toFile().getName())
-                    .build();
-                
                 HttpPost httpPost = new HttpPost(ldsServiceAddress + exchange.getRelativePath() + ldsQueryString);
                 httpPost.setEntity(entity);
 
@@ -142,29 +142,32 @@ public class Program {
 
                 CloseableHttpClient closeableHttpClient = HttpClientBuilder.create().build();
 
+                org.apache.http.HttpResponse response = null;
 
                 try {
 
-                    org.apache.http.HttpResponse response = closeableHttpClient.execute(httpPost);
+                    response = closeableHttpClient.execute(httpPost);
                     HttpEntity result = response.getEntity();
                     transactionStatusCode = Integer.toString(response.getStatusLine().getStatusCode());
 
                     InputStream stream = result.getContent();
                     byte[] bytes = stream.readAllBytes();
 
-                    exchange.getResponseHeaders().clear();
-
-                    for (org.apache.http.Header header : response.getAllHeaders()) {
-                        exchange.getResponseHeaders().put(new HttpString(header.getName()), header.getValue());
-                    }
-
-                    exchange.getResponseSender().send(new String(bytes));              
-
+                    responseText = new String(bytes);
 
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
 
+                // Return the answer from LDS service
+                exchange.getResponseHeaders().clear();
+
+                for (Header header : response.getAllHeaders()) {
+                    
+                    exchange.getResponseHeaders().put(HttpString.tryFromString(header.getName()), header.getValue());
+                }
+
+                exchange.getResponseSender().send(responseText); 
 
                 
                 // Call Billing service and swallow any raised exception
@@ -191,11 +194,21 @@ public class Program {
                         .build();
 
                     httpAsynClient.sendAsync(requestHead, java.net.http.HttpResponse.BodyHandlers.discarding());
+                    /*
+                        .whenCompleteAsync((t, u) -> {
+                            System.out.println(t.headers().toString());
+                            System.out.println("httpResponse statusCode = ${t.statusCode()}");
+                        })
+                        .join();
+                    */
+
 
 
                 } catch (Exception e) {
                     System.out.println(e.getMessage());
                 }
+
+               
 
             }
  
@@ -216,7 +229,7 @@ public class Program {
         Undertow server = Undertow.builder()
                 // .addHttpListener(httpServerPort, httpServerIP)
                 .addHttpsListener(httpServerPort, httpServerIP, sslContext)
-                .setServerOption(UndertowOptions.ENABLE_HTTP2, true)
+                .setServerOption(UndertowOptions.ENABLE_HTTP2, false)
                 .setSocketOption(Options.SSL_ENABLED_PROTOCOLS, Sequence.of("TLSv1.2", "TLSv1.3"))
                 .setHandler(
                     new EagerFormParsingHandler(
