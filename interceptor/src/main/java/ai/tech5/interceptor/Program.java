@@ -1,8 +1,6 @@
 package ai.tech5.interceptor;
 
 import java.util.Deque;
-import java.util.List;
-import java.util.Map;
 import java.util.Properties;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -14,7 +12,6 @@ import java.io.IOException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
-import java.util.function.BiConsumer;
 import javax.net.ssl.SSLContext;
 
 import io.undertow.Undertow;
@@ -81,13 +78,13 @@ public class Program {
                     ldsQueryString = "?" + ldsQueryString;
                 }
 
-                CloseableHttpClient httpAsynClient = HttpClients.custom().build();
+                CloseableHttpClient httpClient = HttpClients.custom().build();
 
                 HttpUriRequest requestGet = RequestBuilder.get()
                     .setUri(ldsServiceAddress + exchange.getRequestURI() + ldsQueryString)
                     .build();
 
-                CloseableHttpResponse response = httpAsynClient.execute(requestGet);
+                CloseableHttpResponse response = httpClient.execute(requestGet);
 
                 
                 exchange.getResponseHeaders().clear();
@@ -107,8 +104,6 @@ public class Program {
             {
 
                 
-                String responseText = "";
-
                 // Receive the multipart form-data request and extract the attached image(s)
                 FormData attachment = exchange.getAttachment(FormDataParser.FORM_DATA);
 
@@ -135,10 +130,10 @@ public class Program {
                 httpPost.setEntity(entity);
 
                 String responseStatusCode = "0";
+                org.apache.http.HttpResponse response = null;
+                String responseText = "";
 
                 CloseableHttpClient closeableHttpClient = HttpClientBuilder.create().build();
-
-                org.apache.http.HttpResponse response = null;
 
                 try {
 
@@ -156,7 +151,7 @@ public class Program {
                 }
 
                 
-                // Call Billing service and swallow any raised exception
+                // Call Billing service and swallow any exception raised
                 String billingServiceAddress = config.getProperty("BillingServiceAddress");
                 String clientId = config.getProperty("ClientID");
                 String applicationId = config.getProperty("ApplicationID");
