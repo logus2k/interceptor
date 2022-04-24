@@ -2,6 +2,7 @@ package ai.tech5.interceptor;
 
 import java.util.Deque;
 import java.util.List;
+import java.util.Map;
 import java.util.Properties;
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -30,11 +31,15 @@ import io.undertow.server.handlers.form.EagerFormParsingHandler;
 
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.client.methods.RequestBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
 import org.xnio.Options;
 import org.xnio.Sequence;
 
@@ -64,46 +69,36 @@ public class Program {
         HttpHandler multipartProcessorHandler = (exchange) -> {
 
 
-            class MyBiConsumer implements BiConsumer<String, List<String>> {
-
-                public void accept(String headerName, List<String> headerValues)
-                {
-                    exchange.getResponseHeaders().put(HttpString.tryFromString(headerName), headerValues.get(0));
-                }
-            }
-
-
             String ldsServiceAddress = config.getProperty("LDSServiceAddress");
 
             
             
             if (exchange.getRequestMethod() == Methods.GET) {
 
-                int ldsTimeoutMilliseconds = Integer.parseInt(config.getProperty("LDSConnectionTimeoutInMilliseconds"));
-                
                 String ldsQueryString = exchange.getQueryString();
 
                 if (ldsQueryString.length() > 0) {
                     ldsQueryString = "?" + ldsQueryString;
                 }
 
-                HttpClient httpAsynClient = HttpClient.newBuilder()
-                    .connectTimeout(Duration.ofMillis(ldsTimeoutMilliseconds))
+                CloseableHttpClient httpAsynClient = HttpClients.custom().build();
+
+                HttpUriRequest requestGet = RequestBuilder.get()
+                    .setUri(ldsServiceAddress + exchange.getRequestURI() + ldsQueryString)
                     .build();
 
-                HttpRequest requestGet = HttpRequest.newBuilder()
-                    .method("GET", HttpRequest.BodyPublishers.noBody())
-                    .uri(URI.create(ldsServiceAddress + exchange.getRequestURI() + ldsQueryString))
-                    .build();
+                CloseableHttpResponse response = httpAsynClient.execute(requestGet);
 
-
-                java.net.http.HttpResponse<byte[]> response = httpAsynClient.send(requestGet, java.net.http.HttpResponse.BodyHandlers.ofByteArray());
-
+                
                 exchange.getResponseHeaders().clear();
-                // BiConsumer<String, List<String>> action = new MyBiConsumer();
-                // response.headers().map().forEach(action);
-                response.headers().map().forEach(new MyBiConsumer());
-                exchange.getResponseSender().send(new String(response.body()));
+
+                Header[] responseHeaders = response.getAllHeaders();
+                
+                for (int x = 0; x < responseHeaders.length; x++) {
+                    exchange.getResponseHeaders().put(HttpString.tryFromString(responseHeaders[x].getName()), responseHeaders[x].getValue());
+                }
+
+                exchange.getResponseSender().send(new String(response.getEntity().getContent().readAllBytes()));
 
 
 
@@ -122,7 +117,7 @@ public class Program {
                 MultipartEntityBuilder multiPartEntityBuilder = MultipartEntityBuilder.create();
                 int numberOfAttachments = formValueQueue.size();
 
-                for (int x = 0; x < numberOfAttachments + 1; x++) {
+                for (int x = 0; x < numberOfAttachments; x++) {
                     FormValue formValueItem = formValueQueue.pop();
                     multiPartEntityBuilder.addBinaryBody(formValueItem.getFileName(), formValueItem.getFileItem().getInputStream().readAllBytes(), ContentType.APPLICATION_OCTET_STREAM, formValueItem.getFileName());
                 }
@@ -159,16 +154,6 @@ public class Program {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-
-                // Return the answer from LDS service
-                exchange.getResponseHeaders().clear();
-
-                for (Header header : response.getAllHeaders()) {
-                    
-                    exchange.getResponseHeaders().put(HttpString.tryFromString(header.getName()), header.getValue());
-                }
-
-                exchange.getResponseSender().send(responseText); 
 
                 
                 // Call Billing service and swallow any raised exception
@@ -210,7 +195,17 @@ public class Program {
                     System.out.println(e.getMessage());
                 }
 
-               
+
+                // Return the answer from LDS service
+                exchange.getResponseHeaders().clear();
+
+                for (Header header : response.getAllHeaders()) {
+                    
+                    exchange.getResponseHeaders().put(HttpString.tryFromString(header.getName()), header.getValue());
+                }
+
+                exchange.getResponseSender().send(responseText);                 
+
 
             }
  
@@ -231,7 +226,7 @@ public class Program {
         Undertow server = Undertow.builder()
                 // .addHttpListener(httpServerPort, httpServerIP)
                 .addHttpsListener(httpServerPort, httpServerIP, sslContext)
-                .setServerOption(UndertowOptions.ENABLE_HTTP2, false)
+                .setServerOption(UndertowOptions.ENABLE_HTTP2, true)
                 .setSocketOption(Options.SSL_ENABLED_PROTOCOLS, Sequence.of("TLSv1.2", "TLSv1.3"))
                 .setHandler(
                     new EagerFormParsingHandler(
