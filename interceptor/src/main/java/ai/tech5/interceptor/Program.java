@@ -52,7 +52,7 @@ public class Program {
         // Load configuration file from .jar
         // InputStream configFile = Program.class.getResourceAsStream("/config.properties");
 
-        // Get configuration file path from arguments
+        // Get configuration file path from main() arguments
         FileInputStream configFile = new FileInputStream(args[0]);
         
         try {
@@ -65,14 +65,14 @@ public class Program {
         HttpHandler httpProcessorHandler = (exchange) -> {
 
             String ldsServiceAddress = config.getProperty("LDSServiceAddress");
+
+            String ldsQueryString = exchange.getQueryString();
+
+            if (ldsQueryString.length() > 0) {
+                ldsQueryString = "?" + ldsQueryString;
+            }
             
             if (exchange.getRequestMethod() == Methods.GET) {
-
-                String ldsQueryString = exchange.getQueryString();
-
-                if (ldsQueryString.length() > 0) {
-                    ldsQueryString = "?" + ldsQueryString;
-                }
 
                 CloseableHttpClient httpClient = HttpClients.custom().build();
 
@@ -95,12 +95,6 @@ public class Program {
             }
             else if (exchange.getRequestMethod() == Methods.POST)
             {
-                String ldsQueryString = exchange.getQueryString();
-    
-                if (ldsQueryString.length() > 0) {
-                    ldsQueryString = "?" + ldsQueryString;
-                }                
-                
                 org.apache.http.HttpResponse response = null;
 
                 FormData attachments = exchange.getAttachment(FormDataParser.FORM_DATA);
@@ -193,8 +187,8 @@ public class Program {
         };
 
         SSLContext sslContext = SSLFactory.builder()
-          .withIdentityMaterial(Paths.get("C:/Labs/Git/interceptor/interceptor/src/main/keystore/TECH5.keystore"), "Tech5!".toCharArray())
-          .withTrustMaterial(Paths.get("C:/Labs/Git/interceptor/interceptor/src/main/keystore/TECH5.truststore"), "Tech5!".toCharArray())
+          .withIdentityMaterial(Paths.get(config.getProperty("HTTPServerKeyStoreLocation")), config.getProperty("HTTPServerKeyStorePassword").toCharArray())
+          .withTrustMaterial(Paths.get(config.getProperty("HTTPServerTrustStoreLocation")), config.getProperty("HTTPServerTrustStorePassword").toCharArray())
           .build()
           .getSslContext();
 
@@ -204,7 +198,7 @@ public class Program {
         Undertow server = Undertow.builder()
                 // .addHttpListener(httpServerPort, httpServerIP)
                 .addHttpsListener(httpServerPort, httpServerIP, sslContext)
-                .setServerOption(UndertowOptions.ENABLE_HTTP2, true)
+                .setServerOption(UndertowOptions.ENABLE_HTTP2, Boolean.parseBoolean(config.getProperty("HTTPServerEnableHTTP2")))
                 .setSocketOption(Options.SSL_ENABLED_PROTOCOLS, Sequence.of("TLSv1.2", "TLSv1.3"))
                 .setHandler(
                     new EagerFormParsingHandler(
