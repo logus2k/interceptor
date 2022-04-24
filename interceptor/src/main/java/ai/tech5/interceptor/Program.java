@@ -81,6 +81,8 @@ public class Program {
                     .build();
 
                 CloseableHttpResponse response = httpClient.execute(requestGet);
+
+                exchange.setStatusCode(response.getStatusLine().getStatusCode());
                 
                 exchange.getResponseHeaders().clear();
 
