@@ -11,7 +11,6 @@ import java.time.Instant;
 import java.util.Deque;
 import java.util.Properties;
 import java.util.UUID;
-
 import javax.net.ssl.SSLContext;
 
 import org.apache.http.Header;
@@ -27,6 +26,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.xnio.Options;
 import org.xnio.Sequence;
+
 
 import io.undertow.Undertow;
 import io.undertow.UndertowOptions;
@@ -131,15 +131,24 @@ public class Program {
                             String transactionId = UUID.randomUUID().toString();
                             String transactionTime = Instant.now().toString();
                             String numberOfTransactions = String.valueOf(numberOfAttachments);
+                            String hostName = System.getenv("HOSTNAME");
 
-                            String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + clientId + "&appId=" + applicationId + "&nt=" + numberOfTransactions;
+                            String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + clientId + "&appId=" + applicationId + "&nt=" + numberOfTransactions + "&host=" + hostName;
                             
                             try {
                             
-                                int timeoutMilliseconds = Integer.parseInt(config.getProperty("BillingConnectionTimeoutInMilliseconds"));
+                                int timeoutInMilliseconds = Integer.parseInt(config.getProperty("BillingConnectionTimeoutInMilliseconds"));
+
+                                SSLContext sslContext = SSLFactory.builder()
+                                    .withIdentityMaterial(Paths.get(config.getProperty("HTTPClientKeyStoreLocation")), config.getProperty("HTTPClientKeyStorePassword").toCharArray())
+                                    .withTrustMaterial(Paths.get(config.getProperty("HTTPClientTrustStoreLocation")), config.getProperty("HTTPClientTrustStorePassword").toCharArray())
+                                    .withSessionTimeout(timeoutInMilliseconds)
+                                    .build()
+                                    .getSslContext();
 
                                 HttpClient httpClient = HttpClient.newBuilder()
-                                    .connectTimeout(Duration.ofMillis(timeoutMilliseconds))
+                                    .connectTimeout(Duration.ofMillis(timeoutInMilliseconds))
+                                    .sslContext(sslContext)
                                     .build();
 
                                 HttpRequest requestHead = HttpRequest.newBuilder()
@@ -148,6 +157,7 @@ public class Program {
                                     .build();
 
                                 httpClient.sendAsync(requestHead, java.net.http.HttpResponse.BodyHandlers.discarding());
+
 
                             } catch (Exception e) {
                                 System.out.println(e.getMessage());
