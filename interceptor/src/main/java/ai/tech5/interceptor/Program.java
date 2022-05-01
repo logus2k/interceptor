@@ -110,7 +110,10 @@ public class Program {
     
                         for (int x = 0; x < numberOfAttachments; x++) {
                             FormValue formValueItem = formValueQueue.pop();
-                            multiPartEntityBuilder.addBinaryBody(formValueItem.getFileName(), formValueItem.getFileItem().getInputStream().readAllBytes(), ContentType.APPLICATION_OCTET_STREAM, formValueItem.getFileName());
+                            multiPartEntityBuilder.addBinaryBody(formValueItem.getFileName(),
+                                                                 formValueItem.getFileItem().getInputStream().readAllBytes(),
+                                                                 ContentType.APPLICATION_OCTET_STREAM,
+                                                                 formValueItem.getFileName());
                         }
     
                         HttpEntity entity = multiPartEntityBuilder.build();
@@ -138,15 +141,19 @@ public class Program {
                             String hostName = envHostName != null ? envHostName : InetAddress.getLocalHost().getHostName();
                             String clientIp = InetAddress.getLocalHost().getHostAddress();
 
-                            String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + customerId + "&pid=" + projectId + "&appid=" + applicationId + "&type=" + transactionType + "&count=" + transactionsCount + "&host=" + hostName + "&cip=" + clientIp;
+                            String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + customerId +
+                                                        "&pid=" + projectId + "&appid=" + applicationId + "&type=" + transactionType +
+                                                        "&count=" + transactionsCount + "&host=" + hostName + "&cip=" + clientIp;
                             
                             try {
                             
                                 int timeoutInMilliseconds = Integer.parseInt(config.getProperty("BillingConnectionTimeoutInMilliseconds"));
 
                                 SSLContext sslContext = SSLFactory.builder()
-                                    .withIdentityMaterial(Paths.get(config.getProperty("HTTPClientKeyStoreLocation")), config.getProperty("HTTPClientKeyStorePassword").toCharArray())
-                                    .withTrustMaterial(Paths.get(config.getProperty("HTTPClientTrustStoreLocation")), config.getProperty("HTTPClientTrustStorePassword").toCharArray())
+                                    .withIdentityMaterial(Paths.get(config.getProperty("HTTPClientKeyStoreLocation")),
+                                                                    config.getProperty("HTTPClientKeyStorePassword").toCharArray())
+                                    .withTrustMaterial(Paths.get(config.getProperty("HTTPClientTrustStoreLocation")),
+                                                                 config.getProperty("HTTPClientTrustStorePassword").toCharArray())
                                     .withSessionTimeout(timeoutInMilliseconds)
                                     .build()
                                     .getSslContext();
@@ -213,8 +220,10 @@ public class Program {
         };
 
         SSLContext sslContext = SSLFactory.builder()
-            .withIdentityMaterial(Paths.get(config.getProperty("HTTPServerKeyStoreLocation")), config.getProperty("HTTPServerKeyStorePassword").toCharArray())
-            .withTrustMaterial(Paths.get(config.getProperty("HTTPServerTrustStoreLocation")), config.getProperty("HTTPServerTrustStorePassword").toCharArray())
+            .withIdentityMaterial(Paths.get(config.getProperty("HTTPServerKeyStoreLocation")),
+                                            config.getProperty("HTTPServerKeyStorePassword").toCharArray())
+            .withTrustMaterial(Paths.get(config.getProperty("HTTPServerTrustStoreLocation")),
+                                         config.getProperty("HTTPServerTrustStorePassword").toCharArray())
             .build()
             .getSslContext();
 
@@ -224,7 +233,8 @@ public class Program {
         Undertow server = Undertow.builder()
             .addHttpsListener(httpServerPort, httpServerIP, sslContext)
             .setServerOption(UndertowOptions.ENABLE_HTTP2, Boolean.parseBoolean(config.getProperty("HTTPServerEnableHTTP2")))
-            .setSocketOption(Options.SSL_ENABLED_PROTOCOLS, Sequence.of("TLSv1.2", "TLSv1.3"))
+            // .setSocketOption(Options.SSL_ENABLED_PROTOCOLS, Sequence.of("TLSv1.2", "TLSv1.3"))
+            .setSocketOption(Options.SSL_ENABLED_PROTOCOLS, Sequence.of(config.getProperty("HTTPServerEnabledProtocols").split(",")))
             .setHandler(
                 new EagerFormParsingHandler(
                     FormParserFactory.builder()
