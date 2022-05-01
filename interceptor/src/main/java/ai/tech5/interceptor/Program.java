@@ -2,6 +2,7 @@ package ai.tech5.interceptor;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -65,7 +66,6 @@ public class Program {
         HttpHandler httpProcessorHandler = (exchange) -> {
 
             String ldsServiceAddress = config.getProperty("LDSServiceAddress");
-
             String ldsQueryString = exchange.getQueryString();
 
             if (ldsQueryString.length() > 0) {
@@ -126,14 +126,19 @@ public class Program {
 
                             // Call Billing service asynchronously and swallow any exception raised
                             String billingServiceAddress = config.getProperty("BillingServiceAddress");
-                            String clientId = config.getProperty("ClientID");
+                            String customerId = config.getProperty("CustomerID");
+                            String projectId = config.getProperty("ProjectID");
                             String applicationId = config.getProperty("ApplicationID");
+                            String transactionType = exchange.getRelativePath();
+                            String numberOfTransactions = String.valueOf(numberOfAttachments);
+
                             String transactionId = UUID.randomUUID().toString();
                             String transactionTime = Instant.now().toString();
-                            String numberOfTransactions = String.valueOf(numberOfAttachments);
-                            String hostName = System.getenv("HOSTNAME");
+                            String envHostName = System.getenv("HOSTNAME");
+                            String hostName = envHostName != null ? envHostName : InetAddress.getLocalHost().getHostName();
+                            String clientIPAddress = InetAddress.getLocalHost().getHostAddress();
 
-                            String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + clientId + "&appId=" + applicationId + "&nt=" + numberOfTransactions + "&host=" + hostName;
+                            String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + customerId + "&projectId=" + projectId + "&appId=" + applicationId + "&type=" + transactionType + "&nt=" + numberOfTransactions + "&host=" + hostName + "&cip=" + clientIPAddress;
                             
                             try {
                             
@@ -173,9 +178,7 @@ public class Program {
                     try {
 
                         HttpPost httpPost = new HttpPost(ldsServiceAddress + exchange.getRelativePath() + ldsQueryString);
-
                         CloseableHttpClient closeableHttpClient = HttpClientBuilder.create().build();
-                        
                         response = closeableHttpClient.execute(httpPost);
 
                         exchange.setStatusCode(response.getStatusLine().getStatusCode());
@@ -214,8 +217,9 @@ public class Program {
                     FormParserFactory.builder()
                         .addParsers(new MultiPartParserDefinition())
                         .build()
-                ).setNext(httpProcessorHandler)
-            ).build();
+                )
+            .setNext(httpProcessorHandler))
+            .build();
         server.start();
     }
 }
