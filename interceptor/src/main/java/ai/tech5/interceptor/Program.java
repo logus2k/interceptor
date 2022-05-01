@@ -24,9 +24,9 @@ import org.apache.http.entity.mime.MultipartEntityBuilder;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
+
 import org.xnio.Options;
 import org.xnio.Sequence;
-
 
 import io.undertow.Undertow;
 import io.undertow.UndertowOptions;
@@ -124,7 +124,7 @@ public class Program {
 
                         if (response.getStatusLine().getStatusCode() == 200) {
 
-                            // Call Billing service and swallow any exception raised
+                            // Call Billing service asynchronously and swallow any exception raised
                             String billingServiceAddress = config.getProperty("BillingServiceAddress");
                             String clientId = config.getProperty("ClientID");
                             String applicationId = config.getProperty("ApplicationID");
@@ -197,26 +197,25 @@ public class Program {
         };
 
         SSLContext sslContext = SSLFactory.builder()
-          .withIdentityMaterial(Paths.get(config.getProperty("HTTPServerKeyStoreLocation")), config.getProperty("HTTPServerKeyStorePassword").toCharArray())
-          .withTrustMaterial(Paths.get(config.getProperty("HTTPServerTrustStoreLocation")), config.getProperty("HTTPServerTrustStorePassword").toCharArray())
-          .build()
-          .getSslContext();
+            .withIdentityMaterial(Paths.get(config.getProperty("HTTPServerKeyStoreLocation")), config.getProperty("HTTPServerKeyStorePassword").toCharArray())
+            .withTrustMaterial(Paths.get(config.getProperty("HTTPServerTrustStoreLocation")), config.getProperty("HTTPServerTrustStorePassword").toCharArray())
+            .build()
+            .getSslContext();
 
         int httpServerPort = Integer.parseInt(config.getProperty("HTTPServerPort"));
         String httpServerIP = config.getProperty("HTTPServerIP");
 
         Undertow server = Undertow.builder()
-                // .addHttpListener(httpServerPort, httpServerIP)
-                .addHttpsListener(httpServerPort, httpServerIP, sslContext)
-                .setServerOption(UndertowOptions.ENABLE_HTTP2, Boolean.parseBoolean(config.getProperty("HTTPServerEnableHTTP2")))
-                .setSocketOption(Options.SSL_ENABLED_PROTOCOLS, Sequence.of("TLSv1.2", "TLSv1.3"))
-                .setHandler(
-                    new EagerFormParsingHandler(
-                        FormParserFactory.builder()
-                            .addParsers(new MultiPartParserDefinition())
-                            .build()
-                    ).setNext(httpProcessorHandler)
-                ).build();
+            .addHttpsListener(httpServerPort, httpServerIP, sslContext)
+            .setServerOption(UndertowOptions.ENABLE_HTTP2, Boolean.parseBoolean(config.getProperty("HTTPServerEnableHTTP2")))
+            .setSocketOption(Options.SSL_ENABLED_PROTOCOLS, Sequence.of("TLSv1.2", "TLSv1.3"))
+            .setHandler(
+                new EagerFormParsingHandler(
+                    FormParserFactory.builder()
+                        .addParsers(new MultiPartParserDefinition())
+                        .build()
+                ).setNext(httpProcessorHandler)
+            ).build();
         server.start();
     }
 }
