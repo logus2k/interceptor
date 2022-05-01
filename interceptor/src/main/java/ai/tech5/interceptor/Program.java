@@ -51,7 +51,7 @@ public class Program {
     public static void main(final String[] args) throws Exception {
         
         // Load configuration file from .jar
-        // InputStream configFile = Program.class.getResourceAsStream("/config.properties");
+        // InputStream configFile = Program.class.getResourceAsStream("/application.properties");
 
         // Get configuration file path from main() arguments
         FileInputStream configFile = new FileInputStream(args[0]);
@@ -127,7 +127,7 @@ public class Program {
 
                         if (response.getStatusLine().getStatusCode() == 200) {
 
-                            // Call Billing Service asynchronously and swallowing any exception raised
+                            // Call Billing Service asynchronously and swallow any exception raised
                             String billingServiceAddress = config.getProperty("BillingServiceAddress");
                             String customerId = config.getProperty("CustomerID");
                             String projectId = config.getProperty("ProjectID");
@@ -233,7 +233,6 @@ public class Program {
         Undertow server = Undertow.builder()
             .addHttpsListener(httpServerPort, httpServerIP, sslContext)
             .setServerOption(UndertowOptions.ENABLE_HTTP2, Boolean.parseBoolean(config.getProperty("HTTPServerEnableHTTP2")))
-            // .setSocketOption(Options.SSL_ENABLED_PROTOCOLS, Sequence.of("TLSv1.2", "TLSv1.3"))
             .setSocketOption(Options.SSL_ENABLED_PROTOCOLS, Sequence.of(config.getProperty("HTTPServerEnabledProtocols").split(",")))
             .setHandler(
                 new EagerFormParsingHandler(
