@@ -130,15 +130,15 @@ public class Program {
                             String projectId = config.getProperty("ProjectID");
                             String applicationId = config.getProperty("ApplicationID");
                             String transactionType = exchange.getRelativePath();
-                            String numberOfTransactions = String.valueOf(numberOfAttachments);
+                            String transactionsCount = String.valueOf(numberOfAttachments);
 
                             String transactionId = UUID.randomUUID().toString();
                             String transactionTime = Instant.now().toString();
                             String envHostName = System.getenv("HOSTNAME");
                             String hostName = envHostName != null ? envHostName : InetAddress.getLocalHost().getHostName();
-                            String clientIPAddress = InetAddress.getLocalHost().getHostAddress();
+                            String clientIp = InetAddress.getLocalHost().getHostAddress();
 
-                            String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + customerId + "&projectId=" + projectId + "&appId=" + applicationId + "&type=" + transactionType + "&nt=" + numberOfTransactions + "&host=" + hostName + "&cip=" + clientIPAddress;
+                            String billingQueryString = "?tid=" + transactionId + "&time=" + transactionTime + "&cid=" + customerId + "&pid=" + projectId + "&appid=" + applicationId + "&type=" + transactionType + "&count=" + transactionsCount + "&host=" + hostName + "&cip=" + clientIp;
                             
                             try {
                             
@@ -168,6 +168,19 @@ public class Program {
                                 System.out.println(e.getMessage());
                             }
                         }
+                        else {
+
+                            exchange.setStatusCode(response.getStatusLine().getStatusCode());
+
+                            exchange.getResponseHeaders().clear();
+
+                            for (Header header : response.getAllHeaders()) {
+                                
+                                exchange.getResponseHeaders().put(HttpString.tryFromString(header.getName()), header.getValue());
+                            }
+            
+                            exchange.getResponseSender().send(new String(response.getEntity().getContent().readAllBytes()));                            
+                        }
 
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -195,7 +208,7 @@ public class Program {
                     exchange.getResponseHeaders().put(HttpString.tryFromString(header.getName()), header.getValue());
                 }
 
-                exchange.getResponseSender().send(new String(response.getEntity().getContent().readAllBytes()));                 
+                exchange.getResponseSender().send(new String(response.getEntity().getContent().readAllBytes()));
             }
         };
 
