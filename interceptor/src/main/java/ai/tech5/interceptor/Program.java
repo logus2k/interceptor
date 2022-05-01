@@ -124,7 +124,7 @@ public class Program {
 
                         if (response.getStatusLine().getStatusCode() == 200) {
 
-                            // Call Billing service asynchronously and swallow any exception raised
+                            // Call Billing Service asynchronously and swallowing any exception raised
                             String billingServiceAddress = config.getProperty("BillingServiceAddress");
                             String customerId = config.getProperty("CustomerID");
                             String projectId = config.getProperty("ProjectID");
